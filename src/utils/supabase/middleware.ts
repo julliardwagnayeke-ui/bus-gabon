@@ -27,9 +27,9 @@ export async function updateSession(request: NextRequest) {
 
   // IMPORTANT : ne pas insérer de code entre createServerClient et getClaims().
   // Cet appel rafraîchit le token et propage les cookies de session.
-  const {
-    data: { claims },
-  } = await supabase.auth.getClaims();
+  // `data` est null pour une requête anonyme → on gère ce cas.
+  const { data } = await supabase.auth.getClaims();
+  const claims = data?.claims ?? null;
 
   // Redirige les visiteurs non connectés qui tentent d'accéder à une zone protégée.
   const { pathname } = request.nextUrl;
