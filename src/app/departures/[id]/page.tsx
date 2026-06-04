@@ -1,6 +1,7 @@
 'use client';
+export const dynamic = 'force-dynamic';
 
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useParams } from 'next/navigation';
 import DepartureHeader from '@/components/departure/DepartureHeader';
 import AgencyTrustCard from '@/components/departure/AgencyTrustCard';
 import BaggagePolicyCard from '@/components/departure/BaggagePolicyCard';
@@ -9,13 +10,8 @@ import BookingCTA from '@/components/departure/BookingCTA';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { useDeparture } from '@/hooks/useSearchDepartures';
 
-interface DeparturePageProps {
-  params: {
-    id: string;
-  };
-}
-
-export default function DeparturePage({ params }: DeparturePageProps) {
+export default function DeparturePage() {
+  const params = useParams<{ id: string }>();
   const searchParams = useSearchParams();
   const passengers = parseInt(searchParams.get('passengers') || '1');
   const { data: departure, isLoading } = useDeparture(params.id);

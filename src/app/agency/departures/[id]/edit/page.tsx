@@ -11,7 +11,7 @@ const DEPARTURE_MOCKS: Record<string, any> = {
 };
 
 export default function EditDeparturePage() {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const [departure, setDeparture] = useState({
     route: '',

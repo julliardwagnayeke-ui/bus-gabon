@@ -4,6 +4,7 @@ import "./globals.css";
 import { Providers } from "./providers";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
+import { Suspense } from "react";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -34,7 +35,7 @@ export default function RootLayout({
           </a>
           <Navbar />
           <main id="main" className="min-h-[80vh]">
-            {children}
+            <Suspense>{children}</Suspense>
           </main>
           <Footer />
         </Providers>

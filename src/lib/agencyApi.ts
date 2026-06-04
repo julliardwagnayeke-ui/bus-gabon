@@ -1,11 +1,14 @@
 'use client';
 
-import { auth } from './firebase';
+import { createClient } from '@/utils/supabase/client';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 
 async function getHeaders() {
-  const token = await auth.currentUser?.getIdToken();
+  const {
+    data: { session },
+  } = await createClient().auth.getSession();
+  const token = session?.access_token;
   return {
     'Content-Type': 'application/json',
     ...(token ? { 'Authorization': `Bearer ${token}` } : {}),

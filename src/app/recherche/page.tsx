@@ -1,11 +1,13 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import { useSearchParams } from 'next/navigation';
 import SearchForm from '@/components/search/SearchForm';
 import DepartureCard from '@/components/search/DepartureCard';
 import { Filter, ArrowUpDown, Bus } from 'lucide-react';
 import { useDepartures } from '@/hooks/useDepartures';
-import Spinner from '@/components/ui/Spinner';
+import Spinner from '@/components/common/LoadingSpinner';
 import { motion } from 'framer-motion';
 
 export default function SearchResultsPage() {

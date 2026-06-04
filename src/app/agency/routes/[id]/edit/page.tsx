@@ -11,7 +11,7 @@ const ROUTE_MOCKS: Record<string, any> = {
 };
 
 export default function EditRoutePage() {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const [route, setRoute] = useState({
     from: '',

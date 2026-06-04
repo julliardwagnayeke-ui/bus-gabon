@@ -32,7 +32,7 @@ const DEPARTURE_MOCKS: Record<string, any> = {
 };
 
 export default function DepartureDetailsPage() {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const [departure, setDeparture] = useState(DEPARTURE_MOCKS['1']);
 

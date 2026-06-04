@@ -1,4 +1,5 @@
 'use client';
+export const dynamic = 'force-dynamic';
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { CheckCircle, Download, Share2, Eye } from 'lucide-react';

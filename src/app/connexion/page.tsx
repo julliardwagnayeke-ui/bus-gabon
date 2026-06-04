@@ -2,14 +2,14 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { createClient } from '@/utils/supabase/client';
 import { motion } from 'framer-motion';
 import { Mail, Lock, ArrowRight, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
 export default function LoginPage() {
   const router = useRouter();
+  const [supabase] = useState(() => createClient());
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -19,16 +19,19 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setError('');
-    
-    try {
-      await signInWithEmailAndPassword(auth, email, password);
-      router.push('/');
-    } catch (err: any) {
-      console.error(err);
+
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+
+    if (signInError) {
       setError('Identifiants invalides ou problème de connexion.');
-    } finally {
       setLoading(false);
+      return;
     }
+
+    // Redirection vers la cible demandée (?redirect=...) ou l'accueil.
+    const redirect = new URLSearchParams(window.location.search).get('redirect') || '/';
+    router.push(redirect);
+    router.refresh();
   };
 
   return (

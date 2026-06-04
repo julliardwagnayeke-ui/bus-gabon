@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { fetchMyTickets } from '@/lib/api';
 import { useApp } from '@/context/AppContext';
-import Spinner from '@/components/ui/Spinner';
+import Spinner from '@/components/common/LoadingSpinner';
 import { motion } from 'framer-motion';
 import { Ticket as TicketIcon, MapPin, Calendar, Clock, QrCode as QrIcon, ChevronRight } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';

@@ -2,53 +2,50 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { createClient } from '@/utils/supabase/client';
 import { motion } from 'framer-motion';
 import { Mail, Lock, User, ArrowRight, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
 export default function RegisterPage() {
   const router = useRouter();
+  const [supabase] = useState(() => createClient());
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [confirmEmailSent, setConfirmEmailSent] = useState(false);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
-    
-    try {
-      // 1. Create User in Firebase
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      
-      // 2. We should ideally create the user in our PostgreSQL DB too
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'}/users`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          uid: userCredential.user.uid,
-          email,
-          name
-        }),
-      });
 
-      if (!res.ok) {
-        console.warn('Failed to sync user with backend, but Firebase account was created.');
-      }
+    // Le profil (table profiles) est créé automatiquement par le trigger
+    // handle_new_user à partir des métadonnées (full_name).
+    const { data, error: signUpError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { full_name: name } },
+    });
 
-      router.push('/');
-    } catch (err: any) {
-      console.error(err);
-      if (err.code === 'auth/email-already-in-use') {
+    if (signUpError) {
+      if (signUpError.message.toLowerCase().includes('already')) {
         setError('Cet email est déjà utilisé.');
       } else {
-        setError('Une erreur est survenue lors de l\'inscription.');
+        setError("Une erreur est survenue lors de l'inscription.");
       }
-    } finally {
+      setLoading(false);
+      return;
+    }
+
+    // Si la confirmation email est activée, aucune session n'est ouverte.
+    if (data.session) {
+      router.push('/');
+      router.refresh();
+    } else {
+      setConfirmEmailSent(true);
       setLoading(false);
     }
   };
@@ -64,6 +61,12 @@ export default function RegisterPage() {
           <h1 className="text-3xl font-extrabold text-dark mb-2 tracking-tight">Rejoignez-nous</h1>
           <p className="text-text-light text-sm">Créez votre compte BusGabon en quelques secondes.</p>
         </div>
+
+        {confirmEmailSent && (
+          <div className="mb-6 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-emerald-700 text-xs font-bold text-center">
+            Compte créé ! Vérifiez votre boîte mail pour confirmer votre adresse, puis connectez-vous.
+          </div>
+        )}
 
         {error && (
           <div className="mb-6 p-4 bg-danger/10 border border-danger/20 rounded-2xl text-danger text-xs font-bold text-center">

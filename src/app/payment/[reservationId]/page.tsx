@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { CheckCircle, XCircle, Clock, Smartphone } from 'lucide-react';
 import Button from '@/components/common/Button';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
@@ -9,13 +9,8 @@ import { useReservation } from '@/hooks/useCreateReservation';
 import { usePayment, usePaymentStatus } from '@/hooks/usePayment';
 import { formatCurrency } from '@/lib/api';
 
-interface PaymentPageProps {
-  params: {
-    reservationId: string;
-  };
-}
-
-export default function PaymentPage({ params }: PaymentPageProps) {
+export default function PaymentPage() {
+  const params = useParams<{ reservationId: string }>();
   const router = useRouter();
   const { data: reservation, isLoading: reservationLoading } = useReservation(params.reservationId);
   const initiatePayment = usePayment();

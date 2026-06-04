@@ -11,7 +11,7 @@ const BUS_MOCKS: Record<string, any> = {
 };
 
 export default function EditBusPage() {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const [bus, setBus] = useState({
     name: '',

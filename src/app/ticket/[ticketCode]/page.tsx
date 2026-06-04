@@ -1,18 +1,13 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import TicketCard from '@/components/ticket/TicketCard';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { api } from '@/lib/api';
 
-interface TicketPageProps {
-  params: {
-    ticketCode: string;
-  };
-}
-
-export default function TicketPage({ params }: TicketPageProps) {
+export default function TicketPage() {
+  const params = useParams<{ ticketCode: string }>();
   const router = useRouter();
 
   const { data: ticket, isLoading, error } = useQuery({

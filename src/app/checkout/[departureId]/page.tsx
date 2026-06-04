@@ -1,7 +1,8 @@
 'use client';
+export const dynamic = 'force-dynamic';
 
 import { useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams, useParams } from 'next/navigation';
 import PassengerForm from '@/components/checkout/PassengerForm';
 import BookingSummary from '@/components/checkout/BookingSummary';
 import PaymentMethodSelector from '@/components/checkout/PaymentMethodSelector';
@@ -10,13 +11,8 @@ import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { useDeparture } from '@/hooks/useSearchDepartures';
 import { useCreateReservation } from '@/hooks/useCreateReservation';
 
-interface CheckoutPageProps {
-  params: {
-    departureId: string;
-  };
-}
-
-export default function CheckoutPage({ params }: CheckoutPageProps) {
+export default function CheckoutPage() {
+  const params = useParams<{ departureId: string }>();
   const router = useRouter();
   const searchParams = useSearchParams();
   const passengers = parseInt(searchParams.get('passengers') || '1');
