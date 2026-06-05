@@ -16,3 +16,9 @@ create policy "profiles_update_own" on public.profiles
 
 -- Phase 3 : ajouter ici les policies pour agencies, routes, departures,
 -- reservations, tickets, payments, etc. (traduction de _legacy/firestore.rules).
+
+-- Phase 3 — étape 1 (agencies) : lecture publique
+alter table public.agencies enable row level security;
+grant select on public.agencies to anon, authenticated;
+drop policy if exists "agencies_select_public" on public.agencies;
+create policy "agencies_select_public" on public.agencies for select to anon, authenticated using (true);
