@@ -1,9 +1,18 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
-import { auth, db } from '../firebase';
+import { supabase } from '../supabase';
 
 const AppContext = createContext(null);
+
+// Rôles « plateforme » de notre schéma Supabase.
+const ADMIN_ROLES = ['super_admin', 'finance_admin', 'support_admin', 'operations_admin', 'content_admin'];
+
+// Mappe le profil Supabase vers le modèle de rôle attendu par l'app Vite.
+function mapRole(profile) {
+  if (!profile) return 'client';
+  if (profile.agency_id) return 'agency_admin';
+  if (ADMIN_ROLES.includes(profile.role)) return 'platform_admin';
+  return 'client';
+}
 
 export function AppProvider({ children }) {
   const [user, setUser]           = useState(null);
@@ -11,67 +20,67 @@ export function AppProvider({ children }) {
   const [agencyId, setAgencyId]   = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
 
-  useEffect(() => {
-    let isMounted = true;
-    
-    const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        try {
-          // Timeout for Firestore to prevent hanging on unreachable backend
-          const fetchPromise = getDoc(doc(db, 'users', firebaseUser.uid));
-          const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Firestore timeout')), 5000)
-          );
-          
-          const snap = await Promise.race([fetchPromise, timeoutPromise]);
-          
-          if (isMounted) {
-            if (snap && snap.exists()) {
-              const data = snap.data();
-              const userData = { uid: firebaseUser.uid, email: firebaseUser.email, ...data };
-              setUser(userData);
-              setUserRole(data.role || 'client');
-              setAgencyId(data.agencyId || null);
-            } else {
-              setUser({ uid: firebaseUser.uid, email: firebaseUser.email, role: 'client' });
-              setUserRole('client');
-            }
-          }
-        } catch (err) {
-          console.warn('[AppContext] Firestore fetch failed or timed out', err);
-          if (isMounted) {
-            setUser({ uid: firebaseUser.uid, email: firebaseUser.email, role: 'client' });
-          }
+  const applySession = useCallback(async (sessionUser) => {
+    if (!sessionUser) {
+      // Repli : compte démo stocké en localStorage (raccourci de test)
+      try {
+        const stored = localStorage.getItem('busgabon_demo_user');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          setUser(parsed);
+          setUserRole(parsed.role || 'client');
+          setAgencyId(parsed.agencyId || null);
+          return;
         }
-      } else {
-        // Vérifier demo user en localStorage
-        try {
-          const stored = localStorage.getItem('busgabon_demo_user');
-          if (stored) {
-            const parsed = JSON.parse(stored);
-            if (isMounted) {
-              setUser(parsed);
-              setUserRole(parsed.role || 'client');
-              setAgencyId(parsed.agencyId || null);
-            }
-          } else {
-            if (isMounted) {
-              setUser(null);
-              setUserRole('client');
-            }
-          }
-        } catch {
-          if (isMounted) setUser(null);
-        }
-      }
-      if (isMounted) setAuthLoading(false);
+      } catch { /* ignore */ }
+      setUser(null);
+      setUserRole('client');
+      setAgencyId(null);
+      return;
+    }
+
+    // Récupère le profil (RLS : lecture de son propre profil)
+    let profile = null;
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, email, full_name, role, agency_id')
+        .eq('id', sessionUser.id)
+        .single();
+      profile = data;
+    } catch { /* profil indisponible → rôle client par défaut */ }
+
+    const role = mapRole(profile);
+    setUser({
+      uid: sessionUser.id,
+      email: sessionUser.email,
+      name: profile?.full_name || sessionUser.user_metadata?.full_name || sessionUser.email,
+      role,
+      agencyId: profile?.agency_id || null,
     });
-    
-    return () => {
-      isMounted = false;
-      unsub();
-    };
+    setUserRole(role);
+    setAgencyId(profile?.agency_id || null);
   }, []);
+
+  useEffect(() => {
+    let mounted = true;
+
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!mounted) return;
+      await applySession(session?.user ?? null);
+      if (mounted) setAuthLoading(false);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (!mounted) return;
+      await applySession(session?.user ?? null);
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, [applySession]);
 
   const loginDemo = useCallback((userData) => {
     setUser(userData);
@@ -82,7 +91,7 @@ export function AppProvider({ children }) {
   }, []);
 
   const logout = useCallback(async () => {
-    try { await auth.signOut(); }
+    try { await supabase.auth.signOut(); }
     catch (err) { console.warn('[AppContext] signOut failed', err); }
     setUser(null);
     setUserRole('client');
@@ -91,9 +100,9 @@ export function AppProvider({ children }) {
     catch (err) { console.warn('[AppContext] localStorage remove failed', err); }
   }, []);
 
-  const isClient       = userRole === 'client';
-  const isAgencyAgent  = userRole === 'agency_agent' || userRole === 'agency_admin';
-  const isAgencyAdmin  = userRole === 'agency_admin';
+  const isClient        = userRole === 'client';
+  const isAgencyAgent   = userRole === 'agency_agent' || userRole === 'agency_admin';
+  const isAgencyAdmin   = userRole === 'agency_admin';
   const isPlatformAdmin = userRole === 'platform_admin';
 
   return (

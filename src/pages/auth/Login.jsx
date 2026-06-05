@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Bus, Eye, EyeOff } from 'lucide-react';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../../firebase';
+import { supabase } from '../../supabase';
 import { useApp } from '../../context/AppContext';
 import { sanitizeInput, validateEmail, checkRateLimit } from '../../lib/security';
 import Button from '../../components/ui/Button';
@@ -35,13 +34,19 @@ export default function Login() {
     if (!checkRateLimit('login_' + cleanEmail, 5, 60000)) { setError('Trop de tentatives. Réessayez dans 1 minute.'); return; }
     setLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, cleanEmail, password);
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
+      if (signInError) {
+        const m = signInError.message?.toLowerCase() || '';
+        setError(
+          m.includes('invalid login credentials') ? 'Email ou mot de passe incorrect'
+          : m.includes('email not confirmed') ? "Votre email n'est pas encore confirmé."
+          : 'Erreur de connexion. Réessayez.'
+        );
+        return;
+      }
       navigate(from, { replace: true });
-    } catch (err) {
-      const msg = err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password'
-        ? 'Email ou mot de passe incorrect'
-        : 'Erreur de connexion. Réessayez.';
-      setError(msg);
+    } catch {
+      setError('Erreur de connexion. Réessayez.');
     } finally {
       setLoading(false);
     }

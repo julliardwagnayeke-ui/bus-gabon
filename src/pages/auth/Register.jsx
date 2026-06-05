@@ -1,9 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Bus, Eye, EyeOff } from 'lucide-react';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { auth, db } from '../../firebase';
+import { supabase } from '../../supabase';
 import { sanitizeInput, validateEmail, validatePassword } from '../../lib/security';
 import Button from '../../components/ui/Button';
 
@@ -29,14 +27,28 @@ export default function Register() {
 
     setLoading(true);
     try {
-      const cred = await createUserWithEmailAndPassword(auth, email, form.password);
-      await setDoc(doc(db, 'users', cred.user.uid), {
-        name, email, phone, role: 'client', createdAt: serverTimestamp(),
+      // Le profil (table profiles) est créé automatiquement par le trigger
+      // handle_new_user à partir des métadonnées (full_name, phone).
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password: form.password,
+        options: { data: { full_name: name, phone } },
       });
-      navigate('/mes-billets', { replace: true });
-    } catch (err) {
-      const msg = err.code === 'auth/email-already-in-use' ? 'Cet email est déjà utilisé.' : 'Erreur lors de l\'inscription.';
-      setError(msg);
+      if (signUpError) {
+        const m = signUpError.message?.toLowerCase() || '';
+        setError(m.includes('already') || m.includes('registered')
+          ? 'Cet email est déjà utilisé.'
+          : "Erreur lors de l'inscription.");
+        return;
+      }
+      if (data.session) {
+        navigate('/mes-billets', { replace: true });
+      } else {
+        // Confirmation email activée : pas de session immédiate
+        setError('Compte créé ! Vérifiez votre email pour confirmer, puis connectez-vous.');
+      }
+    } catch {
+      setError("Erreur lors de l'inscription.");
     } finally {
       setLoading(false);
     }

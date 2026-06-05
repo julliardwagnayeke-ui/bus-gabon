@@ -34,3 +34,15 @@ export async function failPayment(paymentId, reservationId) {
   await updateDoc(doc(db, 'payments', paymentId), { status: 'failed', updatedAt: serverTimestamp() });
   await updateDoc(doc(db, 'reservations', reservationId), { status: 'payment_failed', updatedAt: serverTimestamp() });
 }
+
+// ── Stubs (référencés par Checkout) — à implémenter en Phase 3 (Supabase + SingPay) ──
+// processPayment : déclenchera le paiement Mobile Money via SingPay.
+export async function processPayment() {
+  throw new Error('processPayment : à implémenter (Phase 3 — SingPay/Supabase)');
+}
+
+// subscribeToPayment : suivra le statut du paiement (Supabase Realtime).
+// Renvoie une fonction de désinscription (no-op pour l'instant).
+export function subscribeToPayment(_paymentId, _onChange) {
+  return () => {};
+}
