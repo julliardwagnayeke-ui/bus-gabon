@@ -34,6 +34,11 @@ export default function Navbar() {
               Espace agence
             </Link>
           )}
+          {isPlatformAdmin && (
+            <Link href="/admin/dashboard" className="px-4 py-2 rounded-full text-sm font-medium text-white/90 hover:text-white hover:bg-white/10 transition flex items-center gap-1.5">
+              <ShieldCheck className="w-4 h-4" /> Admin
+            </Link>
+          )}
         </nav>
 
         {/* Actions desktop */}
