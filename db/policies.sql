@@ -41,3 +41,13 @@ grant select, insert, update, delete on public.buses to authenticated;
 drop policy if exists "buses_all_own" on public.buses;
 create policy "buses_all_own" on public.buses for all to authenticated
   using (agency_id = public.my_agency_id()) with check (agency_id = public.my_agency_id());
+
+-- Phase 3 — étape 3 (departures) : lecture publique + écriture agence
+alter table public.departures enable row level security;
+grant select on public.departures to anon;
+grant select, insert, update, delete on public.departures to authenticated;
+drop policy if exists "departures_select_public" on public.departures;
+create policy "departures_select_public" on public.departures for select to anon, authenticated using (true);
+drop policy if exists "departures_write_own" on public.departures;
+create policy "departures_write_own" on public.departures for all to authenticated
+  using (agency_id = public.my_agency_id()) with check (agency_id = public.my_agency_id());
