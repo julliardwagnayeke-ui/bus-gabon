@@ -22,3 +22,22 @@ alter table public.agencies enable row level security;
 grant select on public.agencies to anon, authenticated;
 drop policy if exists "agencies_select_public" on public.agencies;
 create policy "agencies_select_public" on public.agencies for select to anon, authenticated using (true);
+
+-- Phase 3 — étape 2 (routes, buses)
+create or replace function public.my_agency_id()
+returns uuid language sql stable security definer set search_path=public as $$
+  select agency_id from public.profiles where id = auth.uid()
+$$;
+alter table public.routes enable row level security;
+grant select on public.routes to anon;
+grant select, insert, update, delete on public.routes to authenticated;
+drop policy if exists "routes_select_public" on public.routes;
+create policy "routes_select_public" on public.routes for select to anon, authenticated using (true);
+drop policy if exists "routes_write_own" on public.routes;
+create policy "routes_write_own" on public.routes for all to authenticated
+  using (agency_id = public.my_agency_id()) with check (agency_id = public.my_agency_id());
+alter table public.buses enable row level security;
+grant select, insert, update, delete on public.buses to authenticated;
+drop policy if exists "buses_all_own" on public.buses;
+create policy "buses_all_own" on public.buses for all to authenticated
+  using (agency_id = public.my_agency_id()) with check (agency_id = public.my_agency_id());
