@@ -25,9 +25,9 @@ export default function RegisterPage() {
     // Le profil (table profiles) est créé automatiquement par le trigger
     // handle_new_user à partir des métadonnées (full_name).
     const { data, error: signUpError } = await supabase.auth.signUp({
-      email,
+      email: email.trim().toLowerCase(),
       password,
-      options: { data: { full_name: name } },
+      options: { data: { full_name: name.trim() } },
     });
 
     if (signUpError) {
