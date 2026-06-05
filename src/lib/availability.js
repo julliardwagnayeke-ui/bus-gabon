@@ -1,29 +1,16 @@
-import { db } from '../firebase';
-import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
+import { supabase } from '../supabase';
 
 /**
- * Calcule les places disponibles pour un départ.
- * placesRestantes = totalSeats - billets payés - réservations pending non expirées
+ * Places disponibles pour un départ = open_seats - sold_seats.
+ * (sold_seats est la source de vérité, mise à jour à la confirmation de paiement.)
+ * Lecture sur `departures` (table publique) → pas d'exposition des tickets/réservations.
  */
-export async function getAvailableSeats(departureId, totalSeats) {
-  const now = Timestamp.now();
-
-  const [paidSnap, pendingSnap] = await Promise.all([
-    getDocs(query(
-      collection(db, 'tickets'),
-      where('departureId', '==', departureId),
-      where('status', '==', 'paid')
-    )),
-    getDocs(query(
-      collection(db, 'reservations'),
-      where('departureId', '==', departureId),
-      where('status', '==', 'pending_payment'),
-      where('expiresAt', '>', now)
-    )),
-  ]);
-
-  const paidCount = paidSnap.docs.reduce((acc, d) => acc + (d.data().ticketCount || 1), 0);
-  const pendingCount = pendingSnap.docs.reduce((acc, d) => acc + (d.data().ticketCount || 1), 0);
-
-  return Math.max(0, totalSeats - paidCount - pendingCount);
+export async function getAvailableSeats(departureId, fallbackTotal) {
+  const { data, error } = await supabase
+    .from('departures')
+    .select('open_seats, sold_seats')
+    .eq('id', departureId)
+    .single();
+  if (error || !data) return fallbackTotal ?? 0;
+  return Math.max(0, (data.open_seats ?? 0) - (data.sold_seats ?? 0));
 }
