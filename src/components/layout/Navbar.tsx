@@ -26,11 +26,16 @@ export default function Navbar() {
           <Link href="/recherche" className={`px-4 py-2 rounded-full text-sm font-medium transition ${pathname === '/recherche' ? 'bg-white/20 text-white' : 'text-white/80 hover:text-white hover:bg-white/10'}`}>
             Trajets
           </Link>
-          <Link href="/verifier-billet" className={`px-4 py-2 rounded-full text-sm font-medium transition ${pathname === '/verifier-billet' ? 'bg-white/20 text-white' : 'text-white/80 hover:text-white hover:bg-white/10'}`}>
+          <Link href="/verify-ticket" className={`px-4 py-2 rounded-full text-sm font-medium transition ${pathname === '/verify-ticket' ? 'bg-white/20 text-white' : 'text-white/80 hover:text-white hover:bg-white/10'}`}>
             Vérifier un billet
           </Link>
+          {!isAgencyAgent && (
+            <Link href="/devenir-partenaire" className={`px-4 py-2 rounded-full text-sm font-medium transition ${pathname === '/devenir-partenaire' ? 'bg-white/20 text-white' : 'text-white/80 hover:text-white hover:bg-white/10'}`}>
+              Devenir partenaire
+            </Link>
+          )}
           {isAgencyAgent && (
-            <Link href="/agence/dashboard" className="px-4 py-2 rounded-full text-sm font-medium text-white/90 hover:text-white hover:bg-white/10 transition">
+            <Link href="/agency/dashboard" className="px-4 py-2 rounded-full text-sm font-medium text-white/90 hover:text-white hover:bg-white/10 transition">
               Espace agence
             </Link>
           )}
@@ -83,7 +88,7 @@ export default function Navbar() {
               <Link href="/recherche" onClick={() => setMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-white/10 text-white text-sm font-medium">
                 Trajets
               </Link>
-              <Link href="/verifier-billet" onClick={() => setMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-white/10 text-white text-sm font-medium">
+              <Link href="/verify-ticket" onClick={() => setMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-white/10 text-white text-sm font-medium">
                 Vérifier un billet
               </Link>
               {!user && (
