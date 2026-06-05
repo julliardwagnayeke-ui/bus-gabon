@@ -4,8 +4,8 @@
     {
       "name": "bus-gabon",
       "runtimeExecutable": "/Users/mac/.nvm/versions/node/v20.19.0/bin/npm",
-      "runtimeArgs": ["run", "dev"],
-      "port": 3000
+      "runtimeArgs": ["run", "dev", "--", "--port", "5173", "--strictPort"],
+      "port": 5173
     }
   ]
 }

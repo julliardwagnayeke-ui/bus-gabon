@@ -1,5 +1,9 @@
-<!-- BEGIN:nextjs-agent-rules -->
-# This is NOT the Next.js you know
+# BusGabon — note projet
 
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
-<!-- END:nextjs-agent-rules -->
+Plateforme de vente de billets de bus en ligne (Gabon), multi-agences.
+
+**Stack : Vite + React 19 + React Router + Tailwind v4 + Supabase** (auth + Postgres).
+
+- L'app est à la racine (`src/`). Lancer : `npm run dev` (Vite, port 5173).
+- Ancien code archivé (non versionné) : `_legacy/` (backend Express, Firebase functions) et `_next_app/` (tentative Next.js).
+- Migration en cours : l'app Vite était câblée sur Firebase ; on la re-câble sur **Supabase** (auth `supabase-js` côté client + tables Postgres, accès régi par RLS).

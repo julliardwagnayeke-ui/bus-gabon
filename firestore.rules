@@ -1,0 +1,119 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuth() { return request.auth != null; }
+    function uid() { return request.auth.uid; }
+    function userDoc() { return get(/databases/$(database)/documents/users/$(uid())).data; }
+    function hasRole(role) { return isAuth() && userDoc().role == role; }
+    function isAdmin() { return hasRole('platform_admin'); }
+    function isAgencyAdmin() { return hasRole('agency_admin'); }
+    function isAgencyAgent() { return hasRole('agency_agent') || isAgencyAdmin(); }
+    function ownsAgency(agencyId) {
+      return isAgencyAdmin() && userDoc().agencyId == agencyId;
+    }
+
+    // ── users ──────────────────────────────────────────────────────────────
+    match /users/{userId} {
+      allow read: if isAuth() && (uid() == userId || isAdmin());
+      allow create: if isAuth() && uid() == userId;
+      allow update: if isAuth() && (uid() == userId || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    // ── agencies ───────────────────────────────────────────────────────────
+    match /agencies/{agencyId} {
+      allow read: if true;
+      allow create: if isAdmin();
+      allow update: if isAdmin() || ownsAgency(agencyId);
+      allow delete: if isAdmin();
+    }
+
+    // ── agency_users ───────────────────────────────────────────────────────
+    match /agency_users/{docId} {
+      allow read: if isAuth() && (ownsAgency(resource.data.agencyId) || isAdmin());
+      allow write: if isAdmin() || ownsAgency(resource.data.agencyId);
+    }
+
+    // ── buses ──────────────────────────────────────────────────────────────
+    match /buses/{busId} {
+      allow read: if isAuth() && (ownsAgency(resource.data.agencyId) || isAdmin());
+      allow write: if isAdmin() || ownsAgency(resource.data.agencyId);
+    }
+
+    // ── routes ─────────────────────────────────────────────────────────────
+    match /routes/{routeId} {
+      allow read: if true;
+      allow write: if isAdmin() || ownsAgency(resource.data.agencyId);
+    }
+
+    // ── departures ─────────────────────────────────────────────────────────
+    match /departures/{departureId} {
+      allow read: if true;
+      allow create: if isAdmin() || (isAgencyAgent() && ownsAgency(request.resource.data.agencyId));
+      allow update: if isAdmin() || ownsAgency(resource.data.agencyId);
+      allow delete: if isAdmin();
+    }
+
+    // ── reservations ───────────────────────────────────────────────────────
+    match /reservations/{resId} {
+      allow read: if isAuth() && (
+        uid() == resource.data.userId ||
+        ownsAgency(resource.data.agencyId) ||
+        isAdmin()
+      );
+      allow create: if isAuth();
+      allow update: if isAuth() && (
+        uid() == resource.data.userId ||
+        ownsAgency(resource.data.agencyId) ||
+        isAdmin()
+      );
+      allow delete: if isAdmin();
+    }
+
+    // ── tickets ────────────────────────────────────────────────────────────
+    match /tickets/{ticketId} {
+      allow read: if isAuth() && (
+        uid() == resource.data.userId ||
+        ownsAgency(resource.data.agencyId) ||
+        isAdmin()
+      );
+      allow create: if isAuth();
+      allow update: if isAuth() && (
+        ownsAgency(resource.data.agencyId) ||
+        isAdmin()
+      );
+      allow delete: if isAdmin();
+    }
+
+    // ── payments ───────────────────────────────────────────────────────────
+    match /payments/{paymentId} {
+      allow read: if isAuth() && (
+        uid() == resource.data.userId || isAdmin()
+      );
+      allow create: if isAuth() && uid() == request.resource.data.userId;
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ── ticket_checks ──────────────────────────────────────────────────────
+    match /ticket_checks/{checkId} {
+      allow read: if isAuth() && (isAgencyAgent() || isAdmin());
+      allow create: if isAuth() && isAgencyAgent();
+      allow update, delete: if isAdmin();
+    }
+
+    // ── notifications ──────────────────────────────────────────────────────
+    match /notifications/{notifId} {
+      allow read, update: if isAuth() && uid() == resource.data.userId;
+      allow create: if isAuth();
+      allow delete: if isAdmin();
+    }
+
+    // ── contact_messages (formulaire public) ───────────────────────────────
+    match /contact_messages/{msgId} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
+    }
+  }
+}

@@ -56,3 +56,4 @@ pnpm-debug.log*
 
 # Ancien code archivé (conservé sur disque, non versionné)
 _legacy/
+_next_app/
