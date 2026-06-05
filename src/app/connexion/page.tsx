@@ -23,7 +23,15 @@ export default function LoginPage() {
     const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
 
     if (signInError) {
-      setError('Identifiants invalides ou problème de connexion.');
+      console.error('Login error:', signInError);
+      const msg = signInError.message?.toLowerCase() ?? '';
+      if (msg.includes('invalid login credentials')) {
+        setError('Email ou mot de passe incorrect.');
+      } else if (msg.includes('email not confirmed')) {
+        setError("Votre email n'est pas encore confirmé.");
+      } else {
+        setError(signInError.message || 'Problème de connexion. Réessayez.');
+      }
       setLoading(false);
       return;
     }
