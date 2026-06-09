@@ -1,5 +1,7 @@
-import { db } from '../firebase';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { supabase } from '../supabase';
+
+// Singleton : la table platform_settings n'a qu'une ligne (id = 'singleton').
+const SETTINGS_ID = 'singleton';
 
 export const SETTINGS_DEFAULTS = {
   commissionRate:            0.05,  // 5%
@@ -7,24 +9,30 @@ export const SETTINGS_DEFAULTS = {
   reservationExpiryMinutes:  10,    // minutes
 };
 
-const ref = () => doc(db, 'settings', 'platform');
+// Ligne DB (snake_case, commission en %) → modèle app (commissionRate en ratio).
+function mapSettings(row) {
+  if (!row) return { ...SETTINGS_DEFAULTS };
+  return {
+    commissionRate:           row.commission_percentage != null ? row.commission_percentage / 100 : SETTINGS_DEFAULTS.commissionRate,
+    serviceFee:               row.user_fee_per_ticket ?? SETTINGS_DEFAULTS.serviceFee,
+    reservationExpiryMinutes: row.reservation_block_time ?? SETTINGS_DEFAULTS.reservationExpiryMinutes,
+  };
+}
 
 export async function getSettings() {
-  try {
-    const snap = await getDoc(ref());
-    return snap.exists()
-      ? { ...SETTINGS_DEFAULTS, ...snap.data() }
-      : { ...SETTINGS_DEFAULTS };
-  } catch {
-    return { ...SETTINGS_DEFAULTS };
-  }
+  const { data, error } = await supabase
+    .from('platform_settings').select('*').eq('id', SETTINGS_ID).maybeSingle();
+  if (error || !data) return { ...SETTINGS_DEFAULTS };
+  return mapSettings(data);
 }
 
 export async function updateSettings(data) {
-  const allowed = {};
-  if (typeof data.commissionRate           === 'number') allowed.commissionRate           = data.commissionRate;
-  if (typeof data.serviceFee               === 'number') allowed.serviceFee               = data.serviceFee;
-  if (typeof data.reservationExpiryMinutes === 'number') allowed.reservationExpiryMinutes = data.reservationExpiryMinutes;
+  const row = { id: SETTINGS_ID };
+  if (typeof data.commissionRate           === 'number') row.commission_percentage = data.commissionRate * 100;
+  if (typeof data.serviceFee               === 'number') row.user_fee_per_ticket   = data.serviceFee;
+  if (typeof data.reservationExpiryMinutes === 'number') row.reservation_block_time = data.reservationExpiryMinutes;
 
-  await setDoc(ref(), { ...allowed, updatedAt: serverTimestamp() }, { merge: true });
+  const { error } = await supabase
+    .from('platform_settings').upsert(row, { onConflict: 'id' });
+  if (error) throw error;
 }

@@ -4,8 +4,7 @@ import { getAllAgencies } from '../../services/agencies';
 import { formatPrice } from '../../lib/pricing';
 import Badge from '../../components/ui/Badge';
 import Spinner from '../../components/ui/Spinner';
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import { db } from '../../firebase';
+import { getPaidReservations } from '../../services/reservations';
 
 export default function AdminDashboard() {
   const [agencies, setAgencies] = useState([]);
@@ -15,10 +14,9 @@ export default function AdminDashboard() {
   useEffect(() => {
     Promise.all([
       getAllAgencies(),
-      getDocs(query(collection(db, 'reservations'), where('status', '==', 'paid'))),
-    ]).then(([ags, resSnap]) => {
+      getPaidReservations(),
+    ]).then(([ags, paid]) => {
       setAgencies(ags);
-      const paid = resSnap.docs.map(d => d.data());
       setStats({
         totalTickets:    paid.reduce((s, r) => s + (r.ticketCount || 0), 0),
         totalCommissions: paid.reduce((s, r) => s + (r.platformAmount - (r.serviceFee || 200)), 0),

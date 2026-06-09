@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { supabase } from '../supabase';
+import { getSettings, SETTINGS_DEFAULTS } from '../services/settings';
 
 const AppContext = createContext(null);
 
@@ -19,6 +20,12 @@ export function AppProvider({ children }) {
   const [userRole, setUserRole]   = useState('client');
   const [agencyId, setAgencyId]   = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [platformSettings, setPlatformSettings] = useState(SETTINGS_DEFAULTS);
+
+  // Paramètres plateforme (commission, frais…) chargés une fois.
+  useEffect(() => {
+    getSettings().then(setPlatformSettings).catch(() => {});
+  }, []);
 
   const applySession = useCallback(async (sessionUser) => {
     if (!sessionUser) {
@@ -109,6 +116,7 @@ export function AppProvider({ children }) {
     <AppContext.Provider value={{
       user, userRole, agencyId,
       authLoading,
+      platformSettings, setPlatformSettings,
       loginDemo, logout,
       isClient, isAgencyAgent, isAgencyAdmin, isPlatformAdmin,
     }}>

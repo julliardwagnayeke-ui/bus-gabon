@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import { db } from '../../firebase';
+import { getPaidReservations } from '../../services/reservations';
 import { formatPrice } from '../../lib/pricing';
 import { TrendingUp, Percent, BadgeDollarSign } from 'lucide-react';
 import Spinner from '../../components/ui/Spinner';
@@ -40,11 +39,10 @@ export default function AdminRevenue() {
 
   useEffect(() => {
     Promise.all([
-      getDocs(query(collection(db, 'reservations'), where('status', '==', 'paid'))),
+      getPaidReservations(),
       getAllAgencies().catch(() => []),
     ])
-      .then(([snap, agencies]) => {
-        const paid = snap.docs.map(d => d.data());
+      .then(([paid, agencies]) => {
         const totalCommissions = paid.reduce((s, r) => s + ((r.platformAmount ?? 0) - (r.serviceFee || 200)), 0);
         const totalFees        = paid.length * 200;
         const totalRevenue     = totalCommissions + totalFees;

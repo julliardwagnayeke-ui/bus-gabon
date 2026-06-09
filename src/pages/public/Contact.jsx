@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Mail, Phone, MapPin, Send, CheckCircle2 } from 'lucide-react';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../../firebase';
 import { sanitizeInput, validateEmail, validatePhone } from '../../lib/security';
+
+const SUPPORT_EMAIL = 'contact@busgabon.ga';
 import Button from '../../components/ui/Button';
 
 export default function Contact() {
@@ -31,15 +31,17 @@ export default function Contact() {
     setSubmitting(true);
     setServerError('');
     try {
-      await addDoc(collection(db, 'contact_messages'), {
-        name:    sanitizeInput(form.name),
-        email:   sanitizeInput(form.email),
-        phone:   sanitizeInput(form.phone),
-        subject: sanitizeInput(form.subject),
-        message: sanitizeInput(form.message),
-        status:  'new',
-        createdAt: serverTimestamp(),
-      });
+      // Pas de backend dédié : on ouvre le client mail pré-rempli.
+      const subject = sanitizeInput(form.subject) || 'Contact BusGabon';
+      const body = [
+        `Nom : ${sanitizeInput(form.name)}`,
+        `Email : ${sanitizeInput(form.email)}`,
+        `Téléphone : ${sanitizeInput(form.phone)}`,
+        '',
+        sanitizeInput(form.message),
+      ].join('\n');
+      window.location.href =
+        `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
       setDone(true);
     } catch (err) {
       setServerError(err.message || 'Envoi impossible. Réessayez plus tard.');

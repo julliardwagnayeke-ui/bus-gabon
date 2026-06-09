@@ -1,19 +1,22 @@
 import { useState, useEffect } from 'react';
-import { collection, getDocs, query, orderBy } from 'firebase/firestore';
-import { db } from '../../firebase';
+import { getAllUsers } from '../../services/profiles';
 import Badge from '../../components/ui/Badge';
 import Spinner from '../../components/ui/Spinner';
 import { format } from 'date-fns';
 
-const ROLE_COLOR = { client: 'blue', agency_admin: 'purple', agency_agent: 'amber', platform_admin: 'red' };
+const ROLE_COLOR = {
+  client: 'blue',
+  super_admin: 'red', finance_admin: 'red', support_admin: 'red',
+  operations_admin: 'red', content_admin: 'red',
+};
 
 export default function AdminUsers() {
   const [users, setUsers]     = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getDocs(query(collection(db, 'users'), orderBy('createdAt', 'desc')))
-      .then(snap => setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
+    getAllUsers()
+      .then(setUsers)
       .catch(() => setUsers([]))
       .finally(() => setLoading(false));
   }, []);
@@ -40,7 +43,7 @@ export default function AdminUsers() {
                   <td className="px-4 py-3 text-text-light">{u.email}</td>
                   <td className="px-4 py-3"><Badge color={ROLE_COLOR[u.role] || 'gray'}>{u.role}</Badge></td>
                   <td className="px-4 py-3 text-text-muted text-xs">
-                    {u.createdAt?.toDate ? format(u.createdAt.toDate(), 'dd/MM/yyyy') : '—'}
+                    {u.createdAt ? format(new Date(u.createdAt), 'dd/MM/yyyy') : '—'}
                   </td>
                 </tr>
               ))}

@@ -5,7 +5,6 @@ import { formatPrice, calcPricing } from '../../lib/pricing';
 import { initiatePayment, processPayment, subscribeToPayment } from '../../services/payments';
 import { getDeparture } from '../../services/departures';
 import { getAgency } from '../../services/agencies';
-import { auth } from '../../firebase';
 import Button from '../../components/ui/Button';
 import Spinner from '../../components/ui/Spinner';
 import { useApp } from '../../context/AppContext';
@@ -98,9 +97,8 @@ export default function Checkout() {
     try {
       const pricing = calcPricing(route?.basePrice || 0, ticketCount, platformSettings);
 
-      // 1. Crée le document payment dans Firestore
-      // Utilise l'uid Firebase en direct pour gérer les invités (auth anonyme)
-      const uid = auth.currentUser?.uid || user?.uid || null;
+      // 1. Crée la ligne payment (Supabase)
+      const uid = user?.uid || null;
 
       const pId = await initiatePayment({
         reservationId,

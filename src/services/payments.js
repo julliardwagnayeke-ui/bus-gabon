@@ -1,48 +1,78 @@
-import { db } from '../firebase';
-import { collection, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { supabase } from '../supabase';
 import { generateTicketsForReservation } from './tickets';
 import { getReservation } from './reservations';
 
+// L'enum PaymentMethod en base = airtel | moov | card.
+// 'simulation' (démo) est rangé sous 'card'.
+function dbMethod(method) {
+  return method === 'airtel' || method === 'moov' ? method : 'card';
+}
+
 export async function initiatePayment({ reservationId, userId, agencyId, amount, method, phone }) {
-  const payRef = await addDoc(collection(db, 'payments'), {
-    reservationId, userId, agencyId, amount, method,
-    phone: phone || null,
-    status: 'pending',
-    createdAt: serverTimestamp(),
-  });
-  return payRef.id;
+  const { data, error } = await supabase
+    .from('payments')
+    .upsert({
+      reservation_id: reservationId,
+      amount,
+      method: dbMethod(method),
+      provider: 'singpay',
+      status: 'pending',
+      raw_payload: { phone: phone || null, userId: userId || null, agencyId: agencyId || null },
+    }, { onConflict: 'reservation_id' })
+    .select('id')
+    .single();
+  if (error) throw error;
+  return data.id;
 }
 
 /**
- * Simulation paiement : confirme immédiatement.
- * À remplacer par un vrai appel API (Airtel / Moov) en production.
+ * Confirmation du paiement (mock manuel — pas encore branché sur SingPay).
+ * Marque le paiement payé, génère les billets et incrémente les places vendues.
  */
-export async function confirmPaymentSimulation(paymentId, reservationId) {
-  await updateDoc(doc(db, 'payments', paymentId), {
-    status: 'success',
-    confirmedAt: serverTimestamp(),
-  });
+export async function confirmPayment(paymentId, reservationId) {
+  await supabase.from('payments').update({ status: 'paid' }).eq('id', paymentId);
 
   const reservation = await getReservation(reservationId);
   if (!reservation) throw new Error('Réservation introuvable');
 
-  const ticketIds = await generateTicketsForReservation(reservation);
-  return ticketIds;
+  return generateTicketsForReservation(reservation);
 }
 
 export async function failPayment(paymentId, reservationId) {
-  await updateDoc(doc(db, 'payments', paymentId), { status: 'failed', updatedAt: serverTimestamp() });
-  await updateDoc(doc(db, 'reservations', reservationId), { status: 'payment_failed', updatedAt: serverTimestamp() });
+  await supabase.from('payments').update({ status: 'failed' }).eq('id', paymentId);
+  await supabase
+    .from('reservations')
+    .update({ status: 'cancelled', payment_status: 'failed' })
+    .eq('id', reservationId);
 }
 
-// ── Stubs (référencés par Checkout) — à implémenter en Phase 3 (Supabase + SingPay) ──
-// processPayment : déclenchera le paiement Mobile Money via SingPay.
-export async function processPayment() {
-  throw new Error('processPayment : à implémenter (Phase 3 — SingPay/Supabase)');
+/**
+ * Déclenche le paiement. En mode mock, tous les modes confirment immédiatement
+ * et renvoient les identifiants des billets générés.
+ * À remplacer par l'intégration SingPay (redirection + webhook) en production.
+ */
+export async function processPayment({ paymentId, reservationId }) {
+  return confirmPayment(paymentId, reservationId);
 }
 
-// subscribeToPayment : suivra le statut du paiement (Supabase Realtime).
-// Renvoie une fonction de désinscription (no-op pour l'instant).
+// Admin : liste de tous les paiements (lecture transverse via policy admin).
+export async function getAllPayments() {
+  const { data, error } = await supabase
+    .from('payments')
+    .select('id, reservation_id, amount, method, status, created_at')
+    .order('created_at', { ascending: false });
+  if (error) return [];
+  return data.map(p => ({
+    id: p.id,
+    reservationId: p.reservation_id,
+    amount: p.amount,
+    method: p.method,
+    status: p.status,
+    createdAt: p.created_at,
+  }));
+}
+
+// Suivi temps réel du paiement (no-op tant que SingPay n'est pas branché).
 export function subscribeToPayment(_paymentId, _onChange) {
   return () => {};
 }

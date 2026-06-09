@@ -1,106 +1,115 @@
-import { db } from '../firebase';
-import {
-  collection, doc, addDoc, getDocs, updateDoc,
-  query, where, orderBy, serverTimestamp,
-} from 'firebase/firestore';
+import { supabase } from '../supabase';
+import { calcPricing, SERVICE_FEE } from '../lib/pricing';
 import { logActivity } from './activityLogs';
 
-/**
- * Calcule un aperçu de versement pour une agence sur une période donnée.
- * Filtre côté client pour éviter les index composites Firestore.
- */
-export async function calculatePayoutPreview(agencyId, fromDate, toDate) {
-  const snap = await getDocs(query(
-    collection(db, 'reservations'),
-    where('agencyId', '==', agencyId),
-    where('status',   '==', 'paid'),
-  ));
+// La table `payouts` stocke une seule chaîne `period` ; on encode/décode
+// "début→fin" autour de ce séparateur.
+const PERIOD_SEP = '→';
 
-  const from = new Date(fromDate);
-  const to   = new Date(toDate);
-  to.setHours(23, 59, 59, 999);
-
-  const reservations = snap.docs
-    .map(d => d.data())
-    .filter(r => {
-      if (!r.paidAt) return false;
-      const paidAt = r.paidAt.toDate ? r.paidAt.toDate() : new Date(r.paidAt);
-      return paidAt >= from && paidAt <= to;
-    });
-
-  const reservationCount = reservations.length;
-  const ticketCount      = reservations.reduce((s, r) => s + (r.ticketCount    || 0), 0);
-  const agencyNetAmount  = reservations.reduce((s, r) => s + (r.agencyAmount   || 0), 0);
-  const serviceFeeAmount = reservations.reduce((s, r) => s + (r.serviceFee     || 0), 0);
-  const platformRevenue  = reservations.reduce((s, r) => s + (r.platformAmount || 0), 0);
-  // subtotal = totalAmount - serviceFee (totalClient = subtotal + serviceFee)
-  const grossSalesAmount = reservations.reduce((s, r) => s + ((r.totalAmount || 0) - (r.serviceFee || 0)), 0);
-  const commissionAmount = platformRevenue - serviceFeeAmount;
-
+function mapPayout(row) {
+  if (!row) return null;
+  const [periodStart = '', periodEnd = ''] = (row.period || '').split(PERIOD_SEP);
   return {
-    reservationCount,
-    ticketCount,
-    grossSalesAmount,
-    commissionAmount,
-    serviceFeeAmount,
-    agencyNetAmount,
-    platformRevenue,
+    id: row.id,
+    agencyId: row.agency_id,
+    agencyName: row.agencies?.name || row.agency_id,
+    periodStart,
+    periodEnd,
+    grossSalesAmount: row.gross_sales,
+    commissionAmount: row.commission,
+    agencyNetAmount: row.net_amount,
+    status: row.status,
+    notes: row.payment_reference,
+    paidAt: row.paid_at,
+    createdAt: row.created_at,
   };
 }
 
 /**
- * Crée un document de versement dans Firestore.
+ * Aperçu d'un versement pour une agence sur une période (réservations payées).
+ * Les montants de prix ne sont pas stockés en base → recalculés via calcPricing.
  */
-export async function createPayout({ agencyId, agencyName, periodStart, periodEnd, ...amounts }) {
-  const ref = await addDoc(collection(db, 'agency_payouts'), {
-    agencyId,
-    agencyName: agencyName || '',
-    periodStart,
-    periodEnd,
-    ...amounts,
-    status:    'pending',
-    paidAt:    null,
-    notes:     '',
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  });
+export async function calculatePayoutPreview(agencyId, fromDate, toDate) {
+  const from = new Date(fromDate).toISOString();
+  const to = new Date(toDate);
+  to.setHours(23, 59, 59, 999);
+
+  const { data, error } = await supabase
+    .from('reservations')
+    .select('total_amount, paid_at, departures(ticket_price)')
+    .eq('agency_id', agencyId)
+    .eq('status', 'confirmed')
+    .gte('paid_at', from)
+    .lte('paid_at', to.toISOString());
+  if (error) throw error;
+
+  let reservationCount = 0, ticketCount = 0, grossSalesAmount = 0;
+  let commissionAmount = 0, serviceFeeAmount = 0, agencyNetAmount = 0, platformRevenue = 0;
+
+  for (const r of data) {
+    const unitPrice = r.departures?.ticket_price ?? 0;
+    const count = unitPrice > 0 ? Math.max(1, Math.round((r.total_amount - SERVICE_FEE) / unitPrice)) : 0;
+    const p = calcPricing(unitPrice, count);
+    reservationCount += 1;
+    ticketCount      += count;
+    grossSalesAmount += p.subtotal;
+    commissionAmount += p.commission;
+    serviceFeeAmount += p.serviceFee;
+    agencyNetAmount  += p.agencyAmount;
+    platformRevenue  += p.platformRevenue;
+  }
+
+  return { reservationCount, ticketCount, grossSalesAmount, commissionAmount, serviceFeeAmount, agencyNetAmount, platformRevenue };
+}
+
+export async function createPayout({ agencyId, agencyName, periodStart, periodEnd, grossSalesAmount, commissionAmount, agencyNetAmount }) {
+  const { data, error } = await supabase
+    .from('payouts')
+    .insert({
+      agency_id:  agencyId,
+      period:     `${periodStart}${PERIOD_SEP}${periodEnd}`,
+      gross_sales: grossSalesAmount || 0,
+      commission:  commissionAmount || 0,
+      net_amount:  agencyNetAmount || 0,
+      status:      'pending',
+    })
+    .select('id')
+    .single();
+  if (error) throw error;
 
   logActivity({
     agencyId,
     action:     'agency.payout_created',
-    entityType: 'agency_payout',
-    entityId:   ref.id,
-    metadata:   { agencyName, agencyNetAmount: amounts.agencyNetAmount, periodStart, periodEnd },
+    entityType: 'payout',
+    entityId:   data.id,
+    metadata:   { agencyName, agencyNetAmount, periodStart, periodEnd },
   });
 
-  return ref.id;
+  return data.id;
 }
 
-/**
- * Retourne la liste des versements (tous ou filtrés par agence).
- */
 export async function getPayouts(agencyId) {
-  const constraints = [orderBy('createdAt', 'desc')];
-  if (agencyId) constraints.unshift(where('agencyId', '==', agencyId));
+  let q = supabase
+    .from('payouts')
+    .select('*, agencies(name)')
+    .order('created_at', { ascending: false });
+  if (agencyId) q = q.eq('agency_id', agencyId);
 
-  const snap = await getDocs(query(collection(db, 'agency_payouts'), ...constraints));
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const { data, error } = await q;
+  if (error) return [];
+  return data.map(mapPayout);
 }
 
-/**
- * Marque un versement comme payé.
- */
 export async function markPayoutPaid(payoutId, notes = '') {
-  await updateDoc(doc(db, 'agency_payouts', payoutId), {
-    status:    'paid',
-    paidAt:    serverTimestamp(),
-    notes,
-    updatedAt: serverTimestamp(),
-  });
+  const { error } = await supabase
+    .from('payouts')
+    .update({ status: 'paid', paid_at: new Date().toISOString(), payment_reference: notes })
+    .eq('id', payoutId);
+  if (error) throw error;
 
   logActivity({
     action:     'agency.payout_paid',
-    entityType: 'agency_payout',
+    entityType: 'payout',
     entityId:   payoutId,
     metadata:   { notes },
   });

@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '../../firebase';
+import { updateMyProfile } from '../../services/profiles';
 import { useApp } from '../../context/AppContext';
 import Button from '../../components/ui/Button';
 import { User } from 'lucide-react';
@@ -18,7 +17,7 @@ export default function Profile() {
     if (!user?.uid) return;
     setLoading(true);
     try {
-      await updateDoc(doc(db, 'users', user.uid), { name: form.name, phone: form.phone });
+      await updateMyProfile(user.uid, { name: form.name, phone: form.phone });
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (err) { console.warn('[Profile] save failed', err); }

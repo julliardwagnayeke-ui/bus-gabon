@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, getDocs, orderBy, query } from 'firebase/firestore';
-import { db } from '../../firebase';
+import { getAllPayments } from '../../services/payments';
 import { formatPrice } from '../../lib/pricing';
 import Badge from '../../components/ui/Badge';
 import Spinner from '../../components/ui/Spinner';
@@ -11,8 +10,8 @@ export default function AdminPayments() {
   const [loading, setLoading]   = useState(true);
 
   useEffect(() => {
-    getDocs(query(collection(db, 'payments'), orderBy('createdAt', 'desc')))
-      .then(snap => setPayments(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
+    getAllPayments()
+      .then(setPayments)
       .catch(() => setPayments([]))
       .finally(() => setLoading(false));
   }, []);
@@ -42,10 +41,10 @@ export default function AdminPayments() {
                     <td className="px-4 py-3 capitalize">{p.method}</td>
                     <td className="px-4 py-3 font-medium">{formatPrice(p.amount || 0)}</td>
                     <td className="px-4 py-3">
-                      <Badge color={p.status === 'success' ? 'green' : p.status === 'pending' ? 'blue' : 'red'}>{p.status}</Badge>
+                      <Badge color={p.status === 'paid' ? 'green' : p.status === 'pending' || p.status === 'processing' ? 'blue' : 'red'}>{p.status}</Badge>
                     </td>
                     <td className="px-4 py-3 text-text-muted text-xs">
-                      {p.createdAt?.toDate ? format(p.createdAt.toDate(), 'dd/MM/yyyy HH:mm') : '—'}
+                      {p.createdAt ? format(new Date(p.createdAt), 'dd/MM/yyyy HH:mm') : '—'}
                     </td>
                   </tr>
                 ))}

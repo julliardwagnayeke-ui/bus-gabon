@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../firebase';
+import { getAgency } from '../services/agencies';
 import { useApp } from '../context/AppContext';
 
 export function useAgencyData() {
@@ -10,8 +9,9 @@ export function useAgencyData() {
 
   useEffect(() => {
     if (!agencyId) { setLoading(false); return; }
-    getDoc(doc(db, 'agencies', agencyId))
-      .then((snap) => snap.exists() ? setAgency({ id: snap.id, ...snap.data() }) : setAgency(null))
+    setLoading(true);
+    getAgency(agencyId)
+      .then(setAgency)
       .catch(() => setAgency(null))
       .finally(() => setLoading(false));
   }, [agencyId]);
