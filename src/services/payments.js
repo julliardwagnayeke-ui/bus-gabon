@@ -1,6 +1,7 @@
 import { supabase } from '../supabase';
 import { generateTicketsForReservation } from './tickets';
 import { getReservation } from './reservations';
+import { logActivity } from './activityLogs';
 
 // L'enum PaymentMethod en base = airtel | moov | card.
 // 'simulation' (démo) est rangé sous 'card'.
@@ -35,7 +36,9 @@ export async function confirmPayment(paymentId, reservationId) {
   const reservation = await getReservation(reservationId);
   if (!reservation) throw new Error('Réservation introuvable');
 
-  return generateTicketsForReservation(reservation);
+  const ticketIds = await generateTicketsForReservation(reservation);
+  logActivity({ userId: reservation.userId, action: 'payment.confirmed', entityType: 'payment', entityId: paymentId, metadata: { reservationId, amount: reservation.totalAmount } });
+  return ticketIds;
 }
 
 export async function failPayment(paymentId, reservationId) {

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Bus, Building2, User, ChevronRight, ChevronLeft, CheckCircle } from 'lucide-react';
 import { registerAgency } from '../../services/agencies';
 import { sanitizeInput, validateEmail, validatePhone, validatePassword } from '../../lib/security';
@@ -10,7 +10,6 @@ const inputClass = (err) =>
   `w-full px-4 py-3 rounded-xl border ${err ? 'border-danger' : 'border-border'} focus:outline-none focus:border-primary text-sm`;
 
 export default function AgencyRegister() {
-  const navigate = useNavigate();
   const [step, setStep] = useState(1); // 1 = agence, 2 = compte, 3 = succès
 
   const [agency, setAgency] = useState({

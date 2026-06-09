@@ -202,3 +202,28 @@ create policy "activity_logs_insert_self" on public.activity_logs for insert to 
 drop policy if exists "activity_logs_select_admin" on public.activity_logs;
 create policy "activity_logs_select_admin" on public.activity_logs for select to authenticated
   using (public.is_platform_admin());
+
+-- Phase 3 — étape 7 (onboarding agence).
+-- Crée une agence en pending_review et rattache le profil de l'appelant.
+-- SECURITY DEFINER : l'insert sur agencies n'est pas ouvert aux clients ; on
+-- contrôle ici que l'appelant n'est pas déjà rattaché à une agence.
+create or replace function public.register_agency(
+  p_name text, p_main_city text, p_phone text, p_email text, p_description text
+) returns uuid language plpgsql security definer set search_path = public as $$
+declare v_id uuid;
+begin
+  if auth.uid() is null then raise exception 'Non authentifié'; end if;
+  if (select agency_id from public.profiles where id = auth.uid()) is not null then
+    raise exception 'Profil déjà rattaché à une agence';
+  end if;
+  insert into public.agencies (name, slug, main_city, phone, email, description, status, verified_badge)
+  values (
+    p_name,
+    lower(regexp_replace(coalesce(p_name,'agence'), '[^a-zA-Z0-9]+', '-', 'g')) || '-' || substr(md5(random()::text), 1, 6),
+    p_main_city, p_phone, p_email, p_description, 'pending_review', false
+  )
+  returning id into v_id;
+  update public.profiles set agency_id = v_id where id = auth.uid();
+  return v_id;
+end $$;
+grant execute on function public.register_agency(text, text, text, text, text) to authenticated;

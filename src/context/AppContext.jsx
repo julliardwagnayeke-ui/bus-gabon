@@ -51,7 +51,7 @@ export function AppProvider({ children }) {
     try {
       const { data } = await supabase
         .from('profiles')
-        .select('id, email, full_name, role, agency_id')
+        .select('id, email, full_name, phone, role, agency_id')
         .eq('id', sessionUser.id)
         .single();
       profile = data;
@@ -62,6 +62,7 @@ export function AppProvider({ children }) {
       uid: sessionUser.id,
       email: sessionUser.email,
       name: profile?.full_name || sessionUser.user_metadata?.full_name || sessionUser.email,
+      phone: profile?.phone || sessionUser.user_metadata?.phone || '',
       role,
       agencyId: profile?.agency_id || null,
     });

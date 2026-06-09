@@ -1,5 +1,6 @@
 import { supabase } from '../supabase';
 import { generatePublicCode, buildQrPayload, parseQrPayload } from '../lib/ticketCode';
+import { logActivity } from './activityLogs';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -120,6 +121,7 @@ export async function verifyTicket(payload, agencyId = null, markAsUsed = false)
         validated_by: UUID_RE.test(agencyId) ? agencyId : null,
       })
       .eq('id', ticket.id);
+    logActivity({ agencyId: ticket.agencyId, action: 'ticket.validated', entityType: 'ticket', entityId: ticket.id });
   }
 
   return { valid: true, message: 'Billet valide. Bon voyage !', ticket: ticketInfo(ticket) };

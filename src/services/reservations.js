@@ -2,6 +2,7 @@ import { supabase } from '../supabase';
 import { calcPricing, SERVICE_FEE } from '../lib/pricing';
 import { getAvailableSeats } from '../lib/availability';
 import { generatePublicCode } from '../lib/ticketCode';
+import { logActivity } from './activityLogs';
 
 // Sélection enrichie : la réservation + le départ + la route (pour l'affichage).
 const SELECT = '*, departures(departure_date, departure_time, agency_id, route_id, ticket_price, routes(from_city, to_city))';
@@ -101,6 +102,7 @@ export async function createReservation({
     .select('id')
     .single();
   if (error) throw error;
+  logActivity({ userId, action: 'reservation.created', entityType: 'reservation', entityId: data.id, metadata: { ticketCount } });
   return data.id;
 }
 

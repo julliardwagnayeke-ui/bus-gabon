@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { ShieldCheck, Zap, Smartphone, Star, ChevronDown, Bus, MapPin, ArrowLeftRight, Info, Mail } from 'lucide-react';
 import SearchForm from '../../components/search/SearchForm';
 import { CITIES } from '../../lib/cities';
-import { getVerifiedAgencies } from '../../services/agencies';
 
 const HERO_SLIDES = [
   {
@@ -36,23 +35,13 @@ const FAQ = [
 
 export default function Home() {
   const [openFaq, setOpenFaq] = useState(null);
-  const [agencies, setAgencies] = useState(null);
   const [currentSlide, setCurrentSlide] = useState(0);
 
   useEffect(() => {
-    let alive = true;
-    getVerifiedAgencies(6)
-      .then(list => { if (alive) setAgencies(list); })
-      .catch(() => { if (alive) setAgencies([]); });
-      
     const timer = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % HERO_SLIDES.length);
     }, 4000);
-    
-    return () => { 
-      alive = false; 
-      clearInterval(timer);
-    };
+    return () => clearInterval(timer);
   }, []);
 
   return (
