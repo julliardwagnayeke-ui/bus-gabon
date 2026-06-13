@@ -67,7 +67,7 @@ export default function AgencyDashboard() {
                   <p className="font-semibold">{d.originCity} → {d.destinationCity}</p>
                   <p className="text-text-muted text-xs">{d.departureTime}</p>
                 </div>
-                <Badge color={d.status === 'scheduled' ? 'blue' : 'green'}>{d.status}</Badge>
+                <Badge color={d.status === 'cancelled' ? 'red' : d.status === 'published' ? 'blue' : 'green'}>{d.status}</Badge>
               </div>
             ))}
           </div>

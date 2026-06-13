@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { CalendarClock, Plus, Edit2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { CalendarClock, Plus, Edit2, Eye } from 'lucide-react';
 import { getAgencyDepartures, createDeparture, updateDeparture } from '../../services/departures';
 import { getAgencyRoutes } from '../../services/routes';
 import { getAgencyBuses } from '../../services/buses';
@@ -10,7 +11,15 @@ import Badge from '../../components/ui/Badge';
 import Modal from '../../components/ui/Modal';
 import Spinner from '../../components/ui/Spinner';
 
-const STATUS_COLOR = { scheduled: 'blue', boarding: 'amber', departed: 'purple', completed: 'gray', cancelled: 'red' };
+export const DEPARTURE_STATUS = {
+  draft:     { label: 'Brouillon', color: 'gray' },
+  published: { label: 'Publié',    color: 'blue' },
+  closed:    { label: 'Fermé',     color: 'amber' },
+  boarding:  { label: 'Embarquement', color: 'amber' },
+  departed:  { label: 'Parti',     color: 'purple' },
+  completed: { label: 'Terminé',   color: 'gray' },
+  cancelled: { label: 'Annulé',    color: 'red' },
+};
 const today = format(new Date(), 'yyyy-MM-dd');
 
 export default function AgencyDepartures() {
@@ -21,7 +30,7 @@ export default function AgencyDepartures() {
   const [loading,    setLoading]    = useState(true);
   const [modal,      setModal]      = useState(false);
   const [editing,    setEditing]    = useState(null);
-  const emptyForm = { routeId: '', busId: '', departureDate: today, departureTime: '07:00', estimatedArrivalTime: '', totalSeats: '', maxTicketsPerOrder: 4, status: 'scheduled' };
+  const emptyForm = { routeId: '', busId: '', departureDate: today, departureTime: '07:00', estimatedArrivalTime: '', totalSeats: '', maxTicketsPerOrder: 4, status: 'published' };
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
 
@@ -76,7 +85,7 @@ export default function AgencyDepartures() {
                 <th className="text-left px-4 py-3 text-xs text-text-muted font-semibold">Ligne</th>
                 <th className="text-left px-4 py-3 text-xs text-text-muted font-semibold">Date</th>
                 <th className="text-left px-4 py-3 text-xs text-text-muted font-semibold">Heure</th>
-                <th className="text-left px-4 py-3 text-xs text-text-muted font-semibold">Places</th>
+                <th className="text-left px-4 py-3 text-xs text-text-muted font-semibold">Places (vendu/total)</th>
                 <th className="text-left px-4 py-3 text-xs text-text-muted font-semibold">Statut</th>
                 <th className="px-4 py-3" />
               </tr>
@@ -87,9 +96,14 @@ export default function AgencyDepartures() {
                   <td className="px-4 py-3 font-medium">{routeLabel(d.routeId)}</td>
                   <td className="px-4 py-3 text-text-light">{d.departureDate}</td>
                   <td className="px-4 py-3">{d.departureTime}</td>
-                  <td className="px-4 py-3 text-text-light">{d.totalSeats}</td>
-                  <td className="px-4 py-3"><Badge color={STATUS_COLOR[d.status] || 'gray'}>{d.status}</Badge></td>
-                  <td className="px-4 py-3"><button onClick={() => openEdit(d)} className="p-1.5 rounded-lg hover:bg-surface-alt"><Edit2 className="w-4 h-4 text-text-muted" /></button></td>
+                  <td className="px-4 py-3 text-text-light">{d.soldSeats ?? 0}/{d.openSeats ?? 0}</td>
+                  <td className="px-4 py-3"><Badge color={(DEPARTURE_STATUS[d.status] || {}).color || 'gray'}>{(DEPARTURE_STATUS[d.status] || {}).label || d.status}</Badge></td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-1">
+                      <Link to={`/agence/departs/${d.id}`} className="p-1.5 rounded-lg hover:bg-surface-alt" title="Détail / manifeste"><Eye className="w-4 h-4 text-text-muted" /></Link>
+                      <button onClick={() => openEdit(d)} className="p-1.5 rounded-lg hover:bg-surface-alt" title="Modifier"><Edit2 className="w-4 h-4 text-text-muted" /></button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
