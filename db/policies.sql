@@ -227,3 +227,27 @@ begin
   return v_id;
 end $$;
 grant execute on function public.register_agency(text, text, text, text, text) to authenticated;
+
+-- Phase 3 — étape 8 (édition agence par le gérant + validation admin).
+-- Le gérant édite SES infos (colonnes "sûres" uniquement) ; status & verified_badge
+-- restent réservés à l'admin (via la RPC set_agency_status).
+grant update (name, logo_url, phone, whatsapp, email, address, main_city, main_station,
+              description, operating_hours, baggage_policy, cancellation_policy)
+  on public.agencies to authenticated;
+drop policy if exists "agencies_update_own" on public.agencies;
+create policy "agencies_update_own" on public.agencies for update to authenticated
+  using (id = public.my_agency_id()) with check (id = public.my_agency_id());
+
+create or replace function public.set_agency_status(
+  p_agency_id uuid, p_status text, p_verified boolean default null
+) returns void language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_platform_admin() then
+    raise exception 'Réservé aux administrateurs';
+  end if;
+  update public.agencies
+     set status = p_status::"AgencyStatus",
+         verified_badge = coalesce(p_verified, verified_badge)
+   where id = p_agency_id;
+end $$;
+grant execute on function public.set_agency_status(uuid, text, boolean) to authenticated;

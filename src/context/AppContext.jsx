@@ -90,6 +90,13 @@ export function AppProvider({ children }) {
     };
   }, [applySession]);
 
+  // Re-charge le profil de la session courante (ex. après l'onboarding agence,
+  // pour refléter le nouveau agency_id / rôle sans recharger la page).
+  const refreshProfile = useCallback(async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    await applySession(session?.user ?? null);
+  }, [applySession]);
+
   const loginDemo = useCallback((userData) => {
     setUser(userData);
     setUserRole(userData.role || 'client');
@@ -118,7 +125,7 @@ export function AppProvider({ children }) {
       user, userRole, agencyId,
       authLoading,
       platformSettings, setPlatformSettings,
-      loginDemo, logout,
+      loginDemo, logout, refreshProfile,
       isClient, isAgencyAgent, isAgencyAdmin, isPlatformAdmin,
     }}>
       {children}

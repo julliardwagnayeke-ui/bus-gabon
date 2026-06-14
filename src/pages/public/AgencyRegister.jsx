@@ -1,15 +1,18 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Bus, Building2, User, ChevronRight, ChevronLeft, CheckCircle } from 'lucide-react';
 import { registerAgency } from '../../services/agencies';
 import { sanitizeInput, validateEmail, validatePhone, validatePassword } from '../../lib/security';
 import { CITIES } from '../../lib/cities';
 import Button from '../../components/ui/Button';
+import { useApp } from '../../context/AppContext';
 
 const inputClass = (err) =>
   `w-full px-4 py-3 rounded-xl border ${err ? 'border-danger' : 'border-border'} focus:outline-none focus:border-primary text-sm`;
 
 export default function AgencyRegister() {
+  const navigate = useNavigate();
+  const { refreshProfile } = useApp();
   const [step, setStep] = useState(1); // 1 = agence, 2 = compte, 3 = succès
 
   const [agency, setAgency] = useState({
@@ -70,6 +73,9 @@ export default function AgencyRegister() {
           password:    account.password,
         }
       );
+      // L'utilisateur est désormais connecté + rattaché à l'agence : on rafraîchit
+      // le profil pour que le rôle « agence » prenne effet immédiatement.
+      await refreshProfile();
       setStep(3);
     } catch (err) {
       const msg =
@@ -94,19 +100,20 @@ export default function AgencyRegister() {
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-5">
               <CheckCircle className="w-8 h-8 text-green-500" />
             </div>
-            <h1 className="text-xl font-bold text-dark mb-3">Demande envoyée !</h1>
+            <h1 className="text-xl font-bold text-dark mb-3">Agence créée !</h1>
             <p className="text-text-light text-sm mb-5 leading-relaxed">
-              Votre demande d'inscription a été reçue. Notre équipe va vérifier vos informations et vous contactera sous <strong>24 à 48 heures</strong> au numéro indiqué.
+              Votre espace agence est prêt. Vous pouvez dès maintenant ajouter vos bus, vos lignes et vos départs.
+              Notre équipe vérifiera votre agence sous <strong>24 à 48 heures</strong> pour activer le badge « vérifiée ».
             </p>
             <div className="bg-primary-50 rounded-xl p-4 text-sm text-text-light mb-6 text-left space-y-1.5">
               <p>✅ Agence : <strong className="text-dark">{agency.name}</strong></p>
               <p>✅ Ville : <strong className="text-dark">{agency.city}</strong></p>
               <p>✅ Contact : <strong className="text-dark">{account.loginEmail}</strong></p>
             </div>
-            <Link to="/connexion"
+            <button onClick={() => navigate('/agence/dashboard')}
               className="block w-full py-3.5 bg-primary text-white rounded-full font-semibold text-sm hover:bg-primary-dark transition text-center">
-              Se connecter
-            </Link>
+              Accéder à mon espace agence
+            </button>
           </div>
         </div>
       </div>

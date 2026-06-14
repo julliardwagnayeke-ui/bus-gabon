@@ -12,6 +12,7 @@ const VerifyTicket     = lazy(() => import('./pages/public/VerifyTicket'));
 const FAQ              = lazy(() => import('./pages/public/FAQ'));
 const Contact          = lazy(() => import('./pages/public/Contact'));
 const Terms            = lazy(() => import('./pages/public/Terms'));
+const AgencyRegister   = lazy(() => import('./pages/public/AgencyRegister'));
 const NotFound         = lazy(() => import('./pages/public/NotFound'));
 
 const Login            = lazy(() => import('./pages/auth/Login'));
@@ -31,6 +32,7 @@ const AgencyProfile      = lazy(() => import('./pages/agency/AgencyProfile'));
 const AgencyBuses        = lazy(() => import('./pages/agency/AgencyBuses'));
 const AgencyRoutes       = lazy(() => import('./pages/agency/AgencyRoutes'));
 const AgencyDepartures   = lazy(() => import('./pages/agency/AgencyDepartures'));
+const AgencyDepartureDetail = lazy(() => import('./pages/agency/AgencyDepartureDetail'));
 const AgencyReservations = lazy(() => import('./pages/agency/AgencyReservations'));
 const AgencyScanner      = lazy(() => import('./pages/agency/AgencyScanner'));
 const AgencySales        = lazy(() => import('./pages/agency/AgencySales'));
@@ -82,6 +84,7 @@ function AppInner() {
           <Route path="/faq"             element={<FAQ />} />
           <Route path="/contact"         element={<Contact />} />
           <Route path="/cgu"             element={<Terms />} />
+          <Route path="/devenir-partenaire" element={<AgencyRegister />} />
 
           <Route path="/connexion"           element={<AuthRoute><Login /></AuthRoute>} />
           <Route path="/inscription"         element={<AuthRoute><Register /></AuthRoute>} />
@@ -104,6 +107,7 @@ function AppInner() {
             <Route path="bus"          element={<AgencyBuses />} />
             <Route path="lignes"       element={<AgencyRoutes />} />
             <Route path="departs"      element={<AgencyDepartures />} />
+            <Route path="departs/:id"  element={<AgencyDepartureDetail />} />
             <Route path="reservations" element={<AgencyReservations />} />
             <Route path="scanner"      element={<AgencyScanner />} />
             <Route path="ventes"       element={<AgencySales />} />

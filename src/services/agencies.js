@@ -18,6 +18,7 @@ function mapAgency(row) {
     mainStation: row.main_station,
     description: row.description,
     operatingHours: row.operating_hours,
+    openingHours: row.operating_hours,
     baggagePolicy: row.baggage_policy,
     cancellationPolicy: row.cancellation_policy,
     status: row.status,
@@ -34,7 +35,7 @@ function toRow(data = {}) {
     name: 'name', slug: 'slug', logo: 'logo_url', logoUrl: 'logo_url',
     phone: 'phone', whatsapp: 'whatsapp', email: 'email', address: 'address',
     mainCity: 'main_city', mainStation: 'main_station', description: 'description',
-    operatingHours: 'operating_hours', baggagePolicy: 'baggage_policy',
+    operatingHours: 'operating_hours', openingHours: 'operating_hours', baggagePolicy: 'baggage_policy',
     cancellationPolicy: 'cancellation_policy', status: 'status', verifiedBadge: 'verified_badge',
   };
   const row = {};
@@ -84,15 +85,16 @@ export async function updateAgency(id, data) {
   if (error) throw error;
 }
 
+// Validation/suspension réservée à l'admin (RPC SECURITY DEFINER : le statut et
+// le badge vérifié ne sont pas modifiables directement par les agences).
 export async function approveAgency(id) {
-  const { error } = await supabase
-    .from('agencies').update({ status: 'active', verified_badge: true }).eq('id', id);
+  const { error } = await supabase.rpc('set_agency_status', { p_agency_id: id, p_status: 'active', p_verified: true });
   if (error) throw error;
   logActivity({ action: 'agency.approved', entityType: 'agency', entityId: id });
 }
 
 export async function suspendAgency(id) {
-  const { error } = await supabase.from('agencies').update({ status: 'suspended' }).eq('id', id);
+  const { error } = await supabase.rpc('set_agency_status', { p_agency_id: id, p_status: 'suspended', p_verified: null });
   if (error) throw error;
   logActivity({ action: 'agency.suspended', entityType: 'agency', entityId: id });
 }
